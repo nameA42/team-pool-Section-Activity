@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Pool · Matcher Lab</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 18px; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .step { background: var(--panel); border-radius: var(--radius); padding: 14px; font-size: 14px; line-height: 1.45; }
+  .step b { display: block; font-size: 16px; margin-bottom: 4px; }
+  .ctrl { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; }
+  .ctrl label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .ctrl output { min-width: 28px; font-weight: 600; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .stat { background: var(--panel); border-radius: var(--radius); padding: 12px 14px; }
+  .stat .v { font-size: 26px; font-weight: 600; }
+  .stat .k { font-size: 13px; color: var(--muted); }
+  .teams { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 12px; }
+  .team { background: var(--panel); border-radius: var(--radius); padding: 12px; display: grid; gap: 6px; }
+  .team h3 { margin: 0 0 4px; font-size: 16px; display: flex; justify-content: space-between; }
+  .person { display: grid; grid-template-columns: 90px auto 1fr; gap: 8px; align-items: center; font-size: 14px; }
+  .person .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .strip { display: flex; gap: 2px; }
+  .strip i { width: 14px; height: 18px; border-radius: 3px; display: block; border: 2px solid transparent; }
+  .strip i.a { background: var(--a); } .strip i.b { background: var(--b); }
+  .strip i.n { border-color: var(--nudge); } .strip i.s { border-color: var(--split); }
+  .strip.maj i { opacity: .55; }
+  .badges { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+  .badge.n { background: var(--nudge); color: #241000; font-weight: 600; }
+  .badge.g { color: var(--good); }
+  .legend { font-size: 13px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .legend i { display: inline-block; width: 12px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 2px solid transparent; }
+  .qs { font-size: 13px; color: var(--muted); columns: 2 260px; }
+  .fakeonly[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div class="toybar"><b>🔬 Matcher lab</b><span class="muted" id="sub"></span><span style="flex:1"></span><a href="present.html" id="back">← presenter</a></div>
+<main>
+  <div class="steps">
+    <div class="step"><b>1 · Compare everyone</b>Every pair of students gets a similarity score: how many questions they answered the same way.</div>
+    <div class="step"><b>2 · Try thousands of splits</b>The algorithm shuffles people between teams (always 2–4 people), keeps changes that make teammates more alike, and tries every possible number of teams.</div>
+    <div class="step"><b>3 · Measure the adjustment</b>For each student: who was their best possible match, and how much less alike is the team they got? Being split from every best match is a <span style="color:var(--nudge)">forced move</span>.</div>
+  </div>
+
+  <div class="ctrl">
+    <div class="seg" id="srcSeg"><button data-v="room" class="on">This room's students</button><button data-v="fake">Fake class</button></div>
+    <label class="fakeonly" hidden>Students <input type="range" id="n" min="2" max="40" value="25"><output id="nOut">25</output></label>
+    <label class="fakeonly" hidden>Answers are <input type="range" id="noise" min="0" max="50" value="22"><output id="noiseOut"></output></label>
+    <button class="fakeonly" id="reroll" hidden>New fake class</button>
+    <span class="muted" id="srcInfo" style="font-size:14px"></span>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="legend">
+    <span><i style="background:var(--a)"></i>answered A</span>
+    <span><i style="background:var(--b)"></i>answered B</span>
+    <span><i style="border-color:var(--nudge)"></i>most of the team answered the other way</span>
+    <span><i style="border-color:var(--split)"></i>team split evenly</span>
+    <span>Faded strip = team majority</span>
+  </div>
+  <div class="teams" id="teams"></div>
+  <details><summary class="muted">The questions</summary><ol class="qs" id="qs"></ol></details>
+</main>
+
+<script src="questions.js"></script>
+<script src="firebase-config.js"></script>
+<script src="js/fake.js"></script>
+<script src="js/matcher.js"></script>
+<script type="module">
+import { connect, room } from "./js/backend.js";
+const $ = (id) => document.getElementById(id);
+const Q = window.QUESTIONS.length;
+let src = "room", seed = 3, roomStudents = [];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+$("sub").textContent = `room: ${room}`;
+$("back").href = `present.html${room === "class" ? "" : `?room=${room}`}`;
+$("qs").innerHTML = QUESTIONS.map((q) => `<li>${esc(q.q)} <span style="color:var(--a)">A: ${esc(q.a)}</span> / <span style="color:var(--b)">B: ${esc(q.b)}</span></li>`).join("");
+const noiseLabel = (v) => (v < 12 ? "very clustered" : v < 28 ? "somewhat clustered" : v < 42 ? "pretty random" : "fully random");
+
+function fakeClass() {
+  const n = +$("n").value, noise = +$("noise").value / 100;
+  const r = Fake.rng(seed * 7919 + n);
+  const types = Array.from({ length: 4 }, () => Array.from({ length: Q }, () => (r() < 0.5 ? 0 : 1)));
+  return Fake.students(n, seed, noise).map((s, i) => ({ ...s, answers: types[i % 4].map((a) => (r() < noise ? 1 - a : a)) }));
+}
+
+function run() {
+  $("nOut").textContent = $("n").value;
+  $("noiseOut").textContent = noiseLabel(+$("noise").value);
+  document.querySelectorAll(".fakeonly").forEach((e) => (e.hidden = src !== "fake"));
+  const students = src === "room" ? roomStudents : fakeClass();
+  $("srcInfo").textContent = src === "room" ? `${students.length} student${students.length === 1 ? "" : "s"} in the pool right now (updates live)` : "";
+  if (students.length < 2) {
+    $("stats").innerHTML = ""; $("teams").innerHTML = `<div class="muted">Need at least 2 students. ${src === "room" ? "Nobody (or only one person) has joined this room yet. Try the fake class." : ""}</div>`;
+    return;
+  }
+  const t0 = performance.now();
+  const res = Matcher.match(students, { seed: 7 });
+  const ms = performance.now() - t0, P = res.people;
+  const avg = P.reduce((s, p) => s + p.teamSim, 0) / P.length;
+  const base = Matcher.randomBaseline(students);
+  const sizes = res.teams.map((t) => t.length), count = (k) => sizes.filter((s) => s === k).length;
+  $("stats").innerHTML = [
+    [`${res.teams.length}`, `teams (${[2, 3, 4].filter((k) => count(k)).map((k) => `${count(k)}×${k}`).join(", ")})`],
+    [`${avg.toFixed(1)}/${Q}`, `avg. teammate match (random: ${base.toFixed(1)})`],
+    [`${P.filter((p) => p.A.nudged).length} of ${P.length}`, `split from every best match`],
+    [`${ms.toFixed(0)} ms`, `to solve`],
+  ].map(([v, k]) => `<div class="stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join("");
+  $("teams").innerHTML = res.teams.map((t, ti) => {
+    const maj = Array.from({ length: Q }, (_, k) => { const ones = t.filter((i) => P[i].answers[k]).length; return ones * 2 > t.length ? "b" : ones * 2 < t.length ? "a" : ""; });
+    const tSim = t.reduce((s, i) => s + P[i].teamSim, 0) / t.length;
+    return `<div class="team"><h3><span>Team ${ti + 1}</span><span class="muted" style="font-weight:400">${tSim.toFixed(1)}/${Q} alike</span></h3>
+      <div class="person"><span class="muted">majority</span><div class="strip maj">${maj.map((m) => `<i class="${m}" style="${m ? "" : "background:var(--panel-2)"}"></i>`).join("")}</div><span></span></div>
+      ${t.map((i) => {
+        const p = P[i];
+        const strip = p.answers.map((a, k) => `<i class="${a ? "b" : "a"} ${p.B.qSplit[k] > 0.5 ? "n" : p.B.qSplit[k] === 0.5 ? "s" : ""}" title="Q${k + 1}"></i>`).join("");
+        const best = p.bestMates.map((j) => P[j].name).slice(0, 2).join(", ");
+        const adj = p.bestSim - p.teamSim;
+        const a = p.A.nudged
+          ? `<span class="badge n" title="Best match: ${esc(best)} (${p.bestSim}/${Q}), on Team ${p.A.ghostTeam + 1}">split from ${esc(best)} −${adj.toFixed(1)}</span>`
+          : `<span class="badge g" title="Best match ${esc(best)} (${p.bestSim}/${Q}) is on this team">with best match${adj > 0.05 ? ` · −${adj.toFixed(1)}` : ""}</span>`;
+        return `<div class="person"><span class="nm">${esc(p.name)}</span><div class="strip">${strip}</div><div class="badges">${a}</div></div>`;
+      }).join("")}</div>`;
+  }).join("");
+}
+
+$("srcSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  $("srcSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  src = b.dataset.v; run();
+});
+$("n").oninput = run; $("noise").oninput = run;
+$("reroll").onclick = () => { seed++; run(); };
+run();
+
+const be = await connect();
+be.onStudents((list) => {
+  roomStudents = list.filter((s) => Array.isArray(s.answers) && s.answers.length === Q).map((s) => ({ ...s, name: String(s.name).slice(0, 24) }));
+  if (src === "room") run();
+});
+</script>
+</body>
+</html>

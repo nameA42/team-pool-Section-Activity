@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Team Pool</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { display: flex; flex-direction: column; }
+  main { flex: 1; width: 100%; max-width: 440px; margin: 0 auto; padding: 24px 16px 32px; display: flex; flex-direction: column; }
+  .screen { display: none; flex: 1; flex-direction: column; gap: 18px; animation: in .25s ease; }
+  .screen.on { display: flex; }
+  @keyframes in { from { opacity: 0; transform: translateY(8px); } }
+  h1 { font-size: 32px; margin: 8px 0 0; line-height: 1.1; }
+  h2 { font-size: 24px; margin: 0; line-height: 1.2; }
+  .big-input { font-size: 22px; padding: 14px 16px; width: 100%; }
+  .go { font-size: 20px; padding: 14px; width: 100%; }
+  .dots { display: flex; gap: 6px; }
+  .dots i { flex: 1; height: 6px; border-radius: 3px; background: var(--panel-2); }
+  .dots i.done { background: var(--accent); }
+  .dots i.now { background: var(--text); }
+  .choice { font-size: 22px; padding: 26px 18px; border-radius: 18px; text-align: left; display: flex; align-items: center; gap: 14px; border: 2px solid transparent; }
+  .choice .tag { font-size: 14px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #111; flex: none; }
+  .choice.a { background: color-mix(in srgb, var(--a) 18%, var(--panel)); }
+  .choice.a .tag { background: var(--a); }
+  .choice.b { background: color-mix(in srgb, var(--b) 18%, var(--panel)); }
+  .choice.b .tag { background: var(--b); }
+  .choice.picked { border-color: var(--text); }
+  .back { align-self: flex-start; background: none; border: 0; color: var(--muted); padding: 4px 0; }
+  .summary { display: grid; gap: 6px; font-size: 15px; }
+  .summary div { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; background: var(--panel); border-radius: 10px; }
+  .summary span:last-child { font-weight: 600; text-align: right; }
+  .floater { position: relative; width: 150px; height: 150px; margin: 18px auto; }
+  .floater .tube { position: absolute; inset: 0; border-radius: 50%;
+    background: repeating-conic-gradient(var(--tube) 0 45deg, #fff 45deg 90deg);
+    -webkit-mask: radial-gradient(circle, transparent 44%, #000 45%); mask: radial-gradient(circle, transparent 44%, #000 45%); }
+  .floater .ball { position: absolute; inset: 37px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; font-weight: 700; color: #fff;
+    box-shadow: inset -8px -10px 0 rgba(0,0,0,.18), inset 7px 7px 0 rgba(255,255,255,.18); text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .bob { animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: translateY(-6px) rotate(-4deg); } 50% { transform: translateY(6px) rotate(4deg); } }
+  .center { text-align: center; }
+  .card { background: var(--panel); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
+  .meter { height: 12px; border-radius: 6px; background: var(--bg-2); overflow: hidden; position: relative; }
+  .meter > i { position: absolute; inset: 0 auto 0 0; border-radius: 6px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; }
+  .mates { display: flex; flex-wrap: wrap; gap: 8px; }
+  .mate { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--panel-2); }
+  .mate i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 700; color: #fff; }
+  .foot { text-align: center; font-size: 13px; color: var(--muted); margin-top: auto; padding-top: 24px; }
+  .foot button { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 0; font-size: 13px; }
+  .err { color: var(--bad); font-size: 14px; }
+  .demo { background: color-mix(in srgb, var(--accent) 22%, var(--panel)); padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="demo" id="demo" hidden></div>
+
+  <section class="screen" id="s-name">
+    <h1>🏊 Team Pool</h1>
+    <p class="muted" style="margin:0">Answer <span id="nq"></span> quick questions, then jump in the pool. Your answers decide who you end up on a team with.</p>
+    <input class="big-input" id="name" placeholder="Your name" autocomplete="off" maxlength="24">
+    <button class="primary go" id="start">Start</button>
+  </section>
+
+  <section class="screen" id="s-q">
+    <div class="dots" id="dots"></div>
+    <button class="back" id="back">‹ Back</button>
+    <div class="muted" id="qnum"></div>
+    <h2 id="qtext"></h2>
+    <button class="choice a" id="optA"><span class="tag">A</span><span></span></button>
+    <button class="choice b" id="optB"><span class="tag">B</span><span></span></button>
+  </section>
+
+  <section class="screen" id="s-review">
+    <h2>Ready to jump in?</h2>
+    <div class="summary" id="summary"></div>
+    <button class="back" id="back2">‹ Change an answer</button>
+    <button class="primary go" id="submit">Cannonball! 💦</button>
+    <div class="err" id="err"></div>
+  </section>
+
+  <section class="screen" id="s-wait">
+    <div class="floater bob" id="myFloat"><div class="tube"></div><div class="ball"></div></div>
+    <h2 class="center" id="waitTitle"></h2>
+    <p class="center muted" id="waitText" style="margin:0"></p>
+    <button id="edit" style="align-self:center">Change my answers</button>
+  </section>
+
+  <section class="screen" id="s-result">
+    <div class="floater" id="myFloat2"><div class="tube"></div><div class="ball"></div></div>
+    <h1 class="center" id="teamTitle"></h1>
+    <div class="card">
+      <div class="muted">Your team</div>
+      <div class="mates" id="mates"></div>
+    </div>
+    <div class="card" id="adjustCard"></div>
+  </section>
+
+  <div class="foot">Not you? <button id="restart">Start over as someone new</button></div>
+</main>
+
+<script src="questions.js"></script>
+<script src="firebase-config.js"></script>
+<script src="js/fake.js"></script>
+<script type="module">
+import { connect, room } from "./js/backend.js";
+
+const $ = (id) => document.getElementById(id);
+const Q = window.QUESTIONS;
+const KEY = `teampool:${room}:me`;
+const FLOATIE = ["#ff5a5f", "#ffb400", "#ff7ad9", "#4fc3ff", "#7bd88f", "#ff8c42", "#b98cff"];
+const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
+
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
+let me = load();
+if (!me || !Array.isArray(me.answers) || me.answers.length !== Q.length) me = { id: Fake.id() + Fake.id(), name: "", answers: Array(Q.length).fill(null), submitted: false };
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(me)); } catch {} };
+let qi = 0, roomState = { phase: "lobby" }, result = null;
+
+$("nq").textContent = Q.length;
+const show = (id) => document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("on", s.id === id));
+
+function renderQ() {
+  const q = Q[qi];
+  $("qnum").textContent = `Question ${qi + 1} of ${Q.length}`;
+  $("qtext").textContent = q.q;
+  $("optA").lastElementChild.textContent = q.a;
+  $("optB").lastElementChild.textContent = q.b;
+  $("optA").classList.toggle("picked", me.answers[qi] === 0);
+  $("optB").classList.toggle("picked", me.answers[qi] === 1);
+  $("dots").innerHTML = Q.map((_, k) => `<i class="${k === qi ? "now" : me.answers[k] !== null ? "done" : ""}"></i>`).join("");
+  $("back").style.visibility = qi ? "visible" : "hidden";
+  show("s-q");
+}
+function pick(v) {
+  me.answers[qi] = v; save();
+  if (qi < Q.length - 1) { qi++; renderQ(); } else renderReview();
+}
+function renderReview() {
+  $("summary").innerHTML = Q.map((q, k) => `<div><span class="muted">${k + 1}. ${q.q}</span><span>${me.answers[k] ? q.b : q.a}</span></div>`).join("");
+  $("err").textContent = "";
+  show("s-review");
+}
+function paint(el) {
+  el.style.setProperty("--tube", FLOATIE[hash(me.id + "f") % FLOATIE.length]);
+  const ball = el.querySelector(".ball");
+  ball.style.background = Fake.color(me.id);
+  ball.textContent = Fake.initials(me.name);
+}
+
+function render() {
+  if (!me.submitted) return;
+  if (result) return renderResult(result);
+  paint($("myFloat"));
+  const running = roomState.phase === "running";
+  $("waitTitle").textContent = running ? "Here we go! 👀" : "You're in the pool! 🏊";
+  $("waitText").textContent = running ? "Watch the big screen to see where you end up." : "Hang tight. When everyone's in, the teams get made on the big screen.";
+  $("edit").hidden = running;
+  show("s-wait");
+}
+function renderResult(r) {
+  paint($("myFloat2"));
+  $("teamTitle").textContent = `You're on Team ${r.team}!`;
+  $("mates").innerHTML = r.mates.map((m) => `<span class="mate"><i style="background:${m.color}">${m.init}</i>${m.name.replace(/</g, "&lt;")}</span>`).join("") || `<span class="muted">Just you</span>`;
+  const pct = (v) => `${(v / r.q) * 100}%`;
+  const col = r.nudged ? "var(--nudge)" : "var(--good)";
+  $("adjustCard").innerHTML = `
+    <div class="row"><span class="muted">Did the algorithm move you?</span><b style="color:${col}">${r.nudged ? "Yes, nudged" : "No"}</b></div>
+    <div class="row"><span>Your best possible match (${r.bestNames.join(", ")})</span><b>${r.bestSim}/${r.q}</b></div>
+    <div class="meter"><i style="width:${pct(r.bestSim)};background:var(--muted)"></i></div>
+    <div class="row"><span>Your team, on average</span><b>${r.teamSim}/${r.q}</b></div>
+    <div class="meter"><i style="width:${pct(r.teamSim)};background:${col}"></i></div>
+    <div class="muted" style="font-size:14px">${r.nudged
+      ? `To keep every team between 2 and 4 people, the algorithm had to move you away from where your answers put you${r.adjust > 0 ? `. That cost you ${r.adjust} point${r.adjust === 1 ? "" : "s"} of similarity` : ""}.`
+      : r.adjust > 0 ? `You landed where your answers took you. Your teammates are just a little less alike than your best match (−${r.adjust}).` : "A perfect landing. No adjustment needed."}</div>`;
+  show("s-result");
+}
+
+$("start").onclick = () => {
+  const n = $("name").value.trim();
+  if (!n) { $("name").focus(); return; }
+  me.name = n; save(); qi = me.answers.findIndex((a) => a === null); if (qi < 0) qi = 0; renderQ();
+};
+$("name").onkeydown = (e) => { if (e.key === "Enter") $("start").click(); };
+$("optA").onclick = () => pick(0);
+$("optB").onclick = () => pick(1);
+$("back").onclick = () => { if (qi) { qi--; renderQ(); } };
+$("back2").onclick = () => { qi = Q.length - 1; renderQ(); };
+$("edit").onclick = () => { qi = 0; renderQ(); };
+$("restart").onclick = async () => {
+  if (!confirm("Start over? Your current answers will be removed.")) return;
+  if (me.submitted && be) be.remove(me.id).catch(() => {});
+  localStorage.removeItem(KEY); location.reload();
+};
+
+// connect in the background so the survey is usable straight away
+const bePromise = connect();
+let be = null;
+$("submit").onclick = async () => {
+  $("submit").disabled = true; $("submit").textContent = "Jumping in…"; $("err").textContent = "";
+  try {
+    be = be || (await bePromise);
+    await Promise.race([
+      be.submit({ id: me.id, name: me.name, answers: me.answers, at: me.at || (me.at = Date.now()) }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 12000)),
+    ]);
+    me.submitted = true; save(); render();
+  } catch (e) {
+    console.error(e);
+    $("err").textContent = "Couldn't reach the pool. Check your internet and try again.";
+  } finally { $("submit").disabled = false; $("submit").textContent = "Cannonball! 💦"; }
+};
+
+if (me.name) $("name").value = me.name;
+if (me.submitted) render(); else show("s-name");
+
+be = await bePromise;
+if (be.kind === "local") { $("demo").hidden = false; $("demo").textContent = "Demo mode: Firebase isn't set up yet, so this only connects to the presenter in this same browser."; }
+be.onRoom((r) => { roomState = r || { phase: "lobby" }; render(); });
+be.onResult(me.id, (r) => { result = r; render(); });
+// if the teacher removed us (or reset the room), let us rejoin
+be.onStudents((list) => {
+  if (me.submitted && !list.some((s) => s.id === me.id) && !result) { me.submitted = false; save(); show("s-name"); }
+});
+</script>
+</body>
+</html>

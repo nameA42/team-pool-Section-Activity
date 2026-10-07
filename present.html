@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Pool · Presenter</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  .bar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--bg-2); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .bar .brand { font-size: 20px; font-weight: 700; }
+  .bar a.btn, .bar button { font-size: 14px; padding: 6px 12px; }
+  a.btn { display: inline-flex; align-items: center; gap: 6px; color: var(--text); text-decoration: none; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; }
+  a.btn:hover { background: var(--line); }
+  .stage { flex: 1; display: flex; min-height: 0; }
+  .canvas-wrap { flex: 1; min-width: 0; display: grid; place-items: center; padding: 10px; background: var(--bg); }
+  .canvas-wrap:fullscreen { padding: 0; }
+  canvas { display: block; border-radius: 18px; }
+  aside { width: 390px; flex: none; background: var(--bg-2); border-left: 1px solid var(--line); overflow-y: auto; display: flex; flex-direction: column; }
+  section { padding: 14px 16px; display: grid; gap: 12px; align-content: start; }
+  section[hidden] { display: none; }
+  h3 { margin: 4px 0 0; font-size: 15px; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; }
+  .join { display: flex; gap: 12px; align-items: center; background: var(--panel); border-radius: 14px; padding: 12px; }
+  .join #qr { background: #fff; padding: 6px; border-radius: 8px; flex: none; line-height: 0; }
+  .join #qr img, .join #qr canvas { width: 104px; height: 104px; }
+  .join .url { font-size: 14px; word-break: break-all; color: var(--accent); }
+  .big { font-size: 22px; font-weight: 600; }
+  .modes { display: grid; gap: 8px; }
+  .mode { text-align: left; display: grid; grid-template-columns: 34px 1fr; gap: 2px 10px; padding: 10px 12px; border-radius: 12px; background: var(--panel); border: 2px solid transparent; }
+  .mode .ic { font-size: 26px; grid-row: span 2; align-self: center; }
+  .mode b { font-size: 16px; }
+  .mode span { font-size: 13px; color: var(--muted); line-height: 1.35; }
+  .mode.on { border-color: var(--accent); background: var(--panel-2); }
+  .opts { display: grid; gap: 8px; }
+  .opts .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .opts label { font-size: 13px; color: var(--muted); min-width: 74px; }
+  .seg button { font-size: 13px; padding: 5px 10px; }
+  #startBtn { font-size: 20px; padding: 12px; }
+  .roster { display: flex; flex-wrap: wrap; gap: 6px; }
+  .roster .pill { padding: 3px 4px 3px 4px; font-size: 14px; }
+  .roster .x { background: none; border: 0; padding: 0 6px; color: var(--muted); font-size: 15px; line-height: 1; }
+  .roster .x:hover { color: var(--bad); }
+  .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; flex: none; }
+  details { background: var(--panel); border-radius: 12px; padding: 8px 12px; font-size: 14px; }
+  details summary { cursor: pointer; color: var(--muted); }
+  details .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .explain { font-size: 13px; color: var(--muted); line-height: 1.45; }
+  .team { background: var(--panel); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; }
+  .team h4 { margin: 0; font-size: 14px; color: var(--muted); font-weight: 500; display: flex; justify-content: space-between; }
+  .chip { display: flex; align-items: center; gap: 8px; font-size: 15px; padding: 3px 4px; border-radius: 8px; }
+  .chip:hover { background: var(--panel-2); }
+  .chip.new { animation: pop .35s ease; background: var(--panel-2); }
+  @keyframes pop { from { opacity: 0; transform: scale(.9); } }
+  .chip .nm { flex: 1; }
+  .ans { font-family: ui-monospace, monospace; font-size: 12px; letter-spacing: 1px; }
+  .ans .a { color: var(--a); } .ans .b { color: var(--b); }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+  .badge.n { background: var(--nudge); color: #241000; font-weight: 600; }
+  .badge.g { background: color-mix(in srgb, var(--good) 25%, var(--panel)); color: var(--good); }
+  .summary { background: var(--panel); border-radius: 12px; padding: 12px; display: grid; gap: 6px; font-size: 14px; }
+  .summary .kv { display: flex; justify-content: space-between; gap: 8px; }
+  .status.local { background: color-mix(in srgb, var(--accent) 25%, var(--panel)); }
+  .status.live { background: color-mix(in srgb, var(--good) 25%, var(--panel)); }
+  .status.err { background: color-mix(in srgb, var(--bad) 35%, var(--panel)); }
+  @media (max-width: 900px) {
+    body { height: auto; overflow: auto; }
+    .stage { flex-direction: column; }
+    .canvas-wrap { height: 70vh; }
+    aside { width: 100%; border-left: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <span class="brand">🏊 Team Pool</span>
+  <span class="pill" id="roomTag"></span>
+  <span class="pill status" id="status">connecting…</span>
+  <span style="flex:1"></span>
+  <button id="soundBtn" title="Quacks and splashes">🔊 Sound on</button>
+  <a class="btn" id="labLink" target="_blank">🔬 Matcher lab</a>
+  <button id="fsBtn">⛶ Fullscreen</button>
+</header>
+<div class="stage">
+  <div class="canvas-wrap" id="wrap"><canvas id="cv"></canvas></div>
+  <aside>
+    <section id="lobbyPanel">
+      <div class="join">
+        <div id="qr"></div>
+        <div style="display:grid;gap:4px">
+          <div class="muted" style="font-size:13px">Students join on their phones at</div>
+          <div class="url" id="joinUrl"></div>
+          <div class="big" id="count">0 in the pool</div>
+        </div>
+      </div>
+      <h3>Presentation mode</h3>
+      <div class="modes" id="modes"></div>
+      <div class="opts" id="opts"></div>
+      <button class="primary" id="startBtn">Start</button>
+      <h3><span>Who's in</span><span id="count2"></span></h3>
+      <div class="roster" id="roster"></div>
+      <details>
+        <summary>Test &amp; admin tools</summary>
+        <div class="row">
+          <button id="fake1">+1 fake student</button>
+          <button id="fake25">Fill to 25 fakes</button>
+          <button id="clearFakes">Remove fakes</button>
+        </div>
+        <div class="row"><button id="resetBtn" style="color:var(--bad)">Reset room (removes everyone)</button></div>
+        <div class="explain" style="margin-top:8px">Tip: use a different room for a practice run by adding <code>?room=practice</code> to this page's address.</div>
+      </details>
+    </section>
+
+    <section id="runPanel" hidden>
+      <div style="display:flex;align-items:center;gap:8px"><span class="big" id="runTitle"></span><span style="flex:1"></span><span class="pill" id="runPhase"></span></div>
+      <div class="explain" id="runExplain"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="backBtn">🏊 Back to the pool</button>
+        <button id="replayBtn">↻ Replay</button>
+        <div class="seg" id="speedSeg"><button data-v="1" class="on">Normal</button><button data-v="0.5">Slow-mo</button></div>
+      </div>
+      <div id="feed" style="display:grid;gap:10px"></div>
+    </section>
+  </aside>
+</div>
+
+<script src="questions.js"></script>
+<script src="firebase-config.js"></script>
+<script src="js/fake.js"></script>
+<script src="js/matcher.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/reverse.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/modes/magnets.js"></script>
+<script src="js/modes/sorter.js"></script>
+<script src="js/modes/plinko.js"></script>
+<script src="js/pool.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module">
+import { connect, room } from "./js/backend.js";
+
+const $ = (id) => document.getElementById(id);
+const Q = window.QUESTIONS.length;
+const MODE_ORDER = ["magnets", "sorter", "plinko"];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+let students = [];      // valid submissions, in join order
+let phase = "lobby";    // lobby | diving | run
+let modeKey = localStorage.getItem("teampool:mode") || "magnets";
+if (!Modes[modeKey]) modeKey = "magnets";
+const modeOpts = JSON.parse(localStorage.getItem("teampool:opts") || "{}");
+let runStudents = [];
+
+// ---------- engine + pool ----------
+const V = Engine.create($("cv"), $("wrap"), {
+  idle: (dt) => pool.update(dt),
+  idleDraw: (ctx) => pool.draw(ctx),
+  onClick: (x, y) => { if (!V.mode) pool.click(x, y); },
+  onArrive: (id) => { publish(id); renderRun(id); if (V.allArrived()) be.setRoom({ phase: "done" }); },
+  onRefresh: () => renderRun(),
+});
+const pool = Pool.create(V);
+window.APP = { V, pool };
+
+// ---------- backend ----------
+const be = await connect();
+const statusEl = $("status");
+if (be.kind === "firebase") { statusEl.textContent = "🟢 Live"; statusEl.className = "pill status live"; statusEl.title = "Connected to Firebase"; }
+else {
+  statusEl.textContent = be.error ? "🔴 Firebase failed · demo mode" : "🟡 Demo mode (this browser only)";
+  statusEl.className = "pill status " + (be.error ? "err" : "local");
+  statusEl.title = be.error ? String(be.error.message || be.error) : "Fill in firebase-config.js so phones can connect (see README).";
+}
+be.onError = (e) => { statusEl.textContent = "🔴 " + (e.code || "connection error"); statusEl.className = "pill status err"; statusEl.title = String(e.message || e); };
+$("roomTag").textContent = `room: ${room}`;
+$("labLink").href = `lab.html?room=${encodeURIComponent(room)}`;
+
+const joinUrl = new URL(room === "class" ? "./" : `./?room=${room}`, location.href).href;
+$("joinUrl").textContent = joinUrl.replace(/^https?:\/\//, "");
+if (window.QRCode) {
+  new QRCode($("qr"), { text: joinUrl, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+  setTimeout(() => pool.setQR($("qr").querySelector("canvas"), joinUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")), 50);
+} else pool.setQR(null, joinUrl.replace(/^https?:\/\//, ""));
+
+const valid = (s) => s && typeof s.name === "string" && Array.isArray(s.answers) && s.answers.length === Q && s.answers.every((a) => a === 0 || a === 1);
+be.onStudents((list) => {
+  students = list.filter(valid).map((s) => ({ ...s, name: s.name.slice(0, 24), color: Fake.color(s.id), init: Fake.initials(s.name) }));
+  if (phase === "lobby") pool.sync(students);
+  renderLobby();
+});
+be.setRoom({ phase: "lobby" });
+
+// ---------- lobby panel ----------
+function renderModes() {
+  $("modes").innerHTML = MODE_ORDER.map((k) => {
+    const m = Modes[k];
+    return `<button class="mode${k === modeKey ? " on" : ""}" data-k="${k}"><span class="ic">${m.icon}</span><b>${m.name}</b><span>${m.blurb}</span></button>`;
+  }).join("");
+  const m = Modes[modeKey], o = (modeOpts[modeKey] ||= {});
+  $("opts").innerHTML = (m.options || []).map((opt) => {
+    const cur = o[opt.key] ?? opt.def;
+    return `<div class="row"><label>${opt.label}</label><div class="seg" data-opt="${opt.key}">${opt.choices.map(([v, l]) => `<button data-v="${v}" class="${String(cur) === v ? "on" : ""}">${l}</button>`).join("")}</div></div>`;
+  }).join("");
+  renderLobby();
+}
+$("modes").addEventListener("click", (e) => {
+  const b = e.target.closest(".mode"); if (!b) return;
+  modeKey = b.dataset.k; localStorage.setItem("teampool:mode", modeKey); renderModes();
+});
+$("opts").addEventListener("click", (e) => {
+  const b = e.target.closest("button"), seg = e.target.closest(".seg"); if (!b || !seg) return;
+  modeOpts[modeKey][seg.dataset.opt] = b.dataset.v;
+  localStorage.setItem("teampool:opts", JSON.stringify(modeOpts));
+  renderModes();
+});
+
+function renderLobby() {
+  const n = students.length;
+  $("count").textContent = `${n} in the pool`;
+  $("count2").textContent = n;
+  $("startBtn").textContent = n < 2 ? "Need at least 2 swimmers" : `Start · ${Modes[modeKey].icon} ${Modes[modeKey].name}`;
+  $("startBtn").disabled = n < 2 || phase !== "lobby";
+  $("roster").innerHTML = students.map((s) => `<span class="pill"><span class="dot" style="background:${s.color};width:18px;height:18px;font-size:8px">${s.init}</span>${esc(s.name)}<button class="x" data-id="${s.id}" title="Remove">×</button></span>`).join("")
+    || `<span class="muted" style="font-size:14px">Nobody yet. Share the link or QR code.</span>`;
+}
+$("roster").addEventListener("click", (e) => {
+  const b = e.target.closest(".x"); if (!b) return;
+  const s = students.find((x) => x.id === b.dataset.id);
+  if (s && confirm(`Remove ${s.name} from the pool?`)) be.remove(s.id);
+});
+
+// ---------- running a mode ----------
+function startRun() {
+  if (students.length < 2 || phase !== "lobby") return;
+  runStudents = students.slice();
+  phase = "diving"; renderLobby();
+  be.clearResults();
+  be.setRoom({ phase: "running", mode: modeKey });
+  pool.dive(() => {
+    V.start(modeKey, runStudents, modeOpts[modeKey] || {});
+    phase = "run";
+    $("lobbyPanel").hidden = true; $("runPanel").hidden = false;
+    renderRun();
+  });
+}
+$("startBtn").onclick = startRun;
+$("replayBtn").onclick = () => {
+  be.clearResults(); be.setRoom({ phase: "running", mode: modeKey });
+  V.start(modeKey, runStudents, modeOpts[modeKey] || {}); renderRun();
+};
+$("backBtn").onclick = () => {
+  V.stop(); phase = "lobby";
+  pool.resurface(students);
+  be.setRoom({ phase: "lobby" });
+  $("lobbyPanel").hidden = false; $("runPanel").hidden = true;
+  renderModes();
+};
+$("speedSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  $("speedSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  V.speed = +b.dataset.v;
+});
+
+function publish(id) {
+  const p = V.byId[id], P = V.match.people;
+  be.publishResult(id, {
+    team: V.teamLabel(p.team), mode: Modes[V.modeKey].name, q: V.q,
+    mates: p.mates.map((j) => ({ name: P[j].name, color: P[j].color, init: P[j].init })),
+    nudged: V.nudged(p), adjust: Math.round((p.bestSim - p.teamSim) * 10) / 10,
+    bestSim: p.bestSim, teamSim: Math.round(p.teamSim * 10) / 10,
+    bestNames: p.bestMates.slice(0, 3).map((j) => P[j].name),
+  });
+}
+
+function badge(p) {
+  const adj = p.bestSim - p.teamSim;
+  if (V.nudged(p)) return `<span class="badge n">nudged${adj > 0.05 ? ` −${adj.toFixed(1)}` : ""}</span>`;
+  return adj < 0.05 ? `<span class="badge g">perfect</span>` : `<span class="badge">−${adj.toFixed(1)}</span>`;
+}
+function renderRun(newId) {
+  if (phase !== "run" || !V.match) return;
+  const m = Modes[V.modeKey], P = V.match.people;
+  $("runTitle").textContent = `${m.icon} ${m.name}`;
+  $("runExplain").innerHTML = m.explain;
+  const done = V.allArrived();
+  $("runPhase").textContent = done ? "Done" : `${V.arrived.size}/${P.length} placed`;
+  const order = V.teamOrder || V.match.teams.map((_, i) => i);
+  const avg = P.reduce((s, p) => s + p.teamSim, 0) / P.length;
+  let html = `<div class="summary">
+    <div class="kv"><span>Students</span><b>${P.length} in ${V.match.teams.length} teams</b></div>
+    <div class="kv"><span>Nudged</span><b>${done ? P.filter((p) => V.nudged(p)).length : "…"}</b></div>
+    <div class="kv"><span>Avg. teammate match</span><b>${avg.toFixed(1)}/${V.q}</b></div>
+    <div class="kv muted"><span>Random teams would be</span><span>${Matcher.randomBaseline(runStudents).toFixed(1)}/${V.q}</span></div></div>`;
+  order.forEach((ti, di) => {
+    const t = V.match.teams[ti], here = t.filter((i) => V.arrived.has(P[i].id));
+    html += `<div class="team"><h4><span>Team ${di + 1}</span><span>${here.length}/${t.length}</span></h4>${here.map((i) => {
+      const p = P[i];
+      return `<div class="chip${p.id === newId ? " new" : ""}" data-id="${p.id}"><span class="dot" style="background:${p.color}">${p.init}</span><span class="nm">${esc(p.name)}</span><span class="ans">${p.answers.map((a) => (a ? `<b class="b">B</b>` : `<b class="a">A</b>`)).join("")}</span>${badge(p)}</div>`;
+    }).join("")}</div>`;
+  });
+  $("feed").innerHTML = html;
+}
+$("feed").addEventListener("mouseover", (e) => { const c = e.target.closest(".chip"); V.hoverId = c ? c.dataset.id : null; });
+$("feed").addEventListener("mouseleave", () => (V.hoverId = null));
+
+// ---------- top bar ----------
+pool.sound = localStorage.getItem("teampool:sound") !== "off";
+const soundLabel = () => ($("soundBtn").textContent = pool.sound ? "🔊 Sound on" : "🔇 Sound off");
+soundLabel();
+$("soundBtn").onclick = () => { pool.sound = !pool.sound; localStorage.setItem("teampool:sound", pool.sound ? "on" : "off"); soundLabel(); if (pool.sound) pool.quack(1); };
+$("fsBtn").onclick = () => { document.fullscreenElement ? document.exitFullscreen() : $("wrap").requestFullscreen(); };
+document.addEventListener("fullscreenchange", () => setTimeout(V.resize, 50));
+
+// ---------- test tools ----------
+function fakeStudent() {
+  const s = Fake.oneStudent(students);
+  const base = students.length && Math.random() < 0.6 ? students[Math.floor(Math.random() * students.length)].answers : null;
+  s.answers = Array.from({ length: Q }, (_, k) => (base ? (Math.random() < 0.25 ? 1 - base[k] : base[k]) : Math.random() < 0.5 ? 0 : 1));
+  return s;
+}
+$("fake1").onclick = () => be.submit(fakeStudent());
+$("fake25").onclick = async () => {
+  const need = 25 - students.length;
+  for (let i = 0; i < need; i++) {
+    const s = fakeStudent();
+    students.push({ ...s, color: Fake.color(s.id), init: Fake.initials(s.name) }); // so the next fake can lean on it
+    be.submit(s);
+    await new Promise((r) => setTimeout(r, 160));
+  }
+};
+$("clearFakes").onclick = () => students.filter((s) => s.id.startsWith("fake-")).forEach((s) => be.remove(s.id));
+$("resetBtn").onclick = () => { if (confirm("Reset the room? This removes every student and result.")) be.reset(); };
+
+renderModes();
+</script>
+</body>
+</html>
