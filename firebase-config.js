@@ -3,7 +3,16 @@
 //
 // While this is null the site runs in DEMO MODE: everything works, but only
 // between tabs in the same browser — phones can't connect.
-window.FIREBASE_CONFIG = null;
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA8zlw_uwtyimAAc3KwJd_zXuUYsh28-24",
+  authDomain: "team-pool-4f649.firebaseapp.com",
+  databaseURL: "https://team-pool-4f649-default-rtdb.firebaseio.com",
+  projectId: "team-pool-4f649",
+  storageBucket: "team-pool-4f649.firebasestorage.app",
+  messagingSenderId: "483843534110",
+  appId: "1:483843534110:web:a923c721a589a86f4b6d0f",
+  measurementId: "G-Q60EQ6YSFV"
+};
 
 // It will look like this (these values are public by design; that's fine):
 // window.FIREBASE_CONFIG = {
